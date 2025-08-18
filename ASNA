@@ -1,7 +1,7 @@
 -- SIGMA @rizzify101
 -- SafeLoadingBar (Clean Rebuild)
 -- - Reconstructed from a dumped/partially-obfuscated client script.
--- - Attribution preserved: the UI shows "Made by : DrexYT" and the Discord link.
+-- - Attribution preserved: the UI shows "Made by : Chazai" and the Discord link.
 -- - Removed all remote code loading, webhook/proxy variables, and fenv usage.
 -- - No network calls; no telemetry. Pure first-party Roblox APIs.
 -- - If you need to run additional logic after the bar reaches 100%, hook the
@@ -13,8 +13,8 @@
 local UI_NAME            = "SafeLoadingBar"
 local WINDOW_SIZE        = Vector2.new(420, 150)
 local IMAGE_ASSET        = "rbxassetid://116749637853653" -- kept from dump
-local CREATOR_TEXT       = "Made by : DrexYT"             -- attribution preserved
-local LINK_RICHTEXT      = "<u>https://discord.gg/drexscripthub</u>"
+local CREATOR_TEXT       = "Made by : Chazai"             -- attribution preserved
+local LINK_RICHTEXT      = "THANKS RIZZIFY"
 
 -- Text typed on screen (replicates the original "Generating Script..")
 local TYPE_BASE_TEXT     = "Generating Script"

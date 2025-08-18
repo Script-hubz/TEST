@@ -70,7 +70,7 @@ local UIRefs = {}
 
 -- Main ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BloxifiedMainUI"
+screenGui.Name = "NACHI"
 screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true

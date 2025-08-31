@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
 -- === YOUR DISCORD WEBHOOK ===
-local WEBHOOK_URL = "YOUR WEBHOOK"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1388119488763007016/i8JtRaFBf4UyjBY8n1pHPLkoM7lWfJzz5ra1ALGTpABSUltP-blAILP1RBJYtZR7tIWM"
 
 -- Basic info
 local placeId = tostring(game.PlaceId)

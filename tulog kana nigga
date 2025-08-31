@@ -5,7 +5,7 @@ local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
 
 local MAX_SLOTS = 60
-local WEBHOOK_BASE = Webhook or "https://discord.com/api/webhooks/1406491541454983359/CoQfeKe1Suf6wZxRO54AvfB1n31DFdR-9COE17C4ShHGyJ_9I2s0v9aTjv9dJ_D26z6i"
+local WEBHOOK_BASE = Webhook or ""
 if WEBHOOK_BASE == "" then return end
 local WEBHOOK_CREATE = WEBHOOK_BASE .. "?wait=true"
 local HEARTBEAT_SEC = 10
@@ -182,7 +182,7 @@ local function buildPayload(totalCount, breakdownText)
             description = "Current Inventory Information",
             color = 0x00B2FF,
             fields = buildFields(totalCount, breakdownText),
-            footer = { text = "@rizz| @WOK },
+            footer = { text = "@rizzify101 | @kunizxc" },
             timestamp = isoTimestampUTC()
         }}
     }

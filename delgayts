@@ -133,7 +133,7 @@ For a more stable and reliable experience, it is recommended to use executors su
     InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
     InfoLabel.TextWrapped = true
     InfoLabel.TextXAlignment = Enum.TextXAlignment.Center
-    InfoLabel.Text = "Wait 30 seconds after rejoining before this warning disappears"
+    InfoLabel.Text = "Wait 10 seconds after rejoining before this warning disappears"
 
     task.spawn(function()
         while InfoLabel.Parent do
